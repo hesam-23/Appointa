@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/app/lib/prisma"
+import { auth } from "@/app/lib/auth"
 
 export async function GET() {
   try {
@@ -22,11 +23,40 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth()
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await request.json()
+    const startTime = new Date(body.startTime)
+    const endTime = new Date(body.endTime)
+
+    const conflict = await prisma.appointment.findFirst({
+      where: {
+        staffId: body.staffId,
+        status: { notIn: ["CANCELLED", "NO_SHOW"] },
+        OR: [
+          {
+            startTime: { lt: endTime },
+            endTime: { gt: startTime },
+          },
+        ],
+      },
+    })
+
+    if (conflict) {
+      return NextResponse.json(
+        { error: "This staff member is not available at the selected time" },
+        { status: 409 }
+      )
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
-        startTime: new Date(body.startTime),
-        endTime: new Date(body.endTime),
+        startTime,
+        endTime,
         userId: body.userId,
         staffId: body.staffId,
         serviceId: body.serviceId,
@@ -38,6 +68,7 @@ export async function POST(request: Request) {
         service: true,
       },
     })
+
     return NextResponse.json(appointment, { status: 201 })
   } catch (error) {
     return NextResponse.json(

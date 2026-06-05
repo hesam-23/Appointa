@@ -2,6 +2,7 @@ import { prisma } from "@/app/lib/prisma"
 import { auth } from "@/app/lib/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import CancelButton from "@/app/components/CancelButton"
 
 export default async function Appointments() {
   const session = await auth()
@@ -51,14 +52,19 @@ export default async function Appointments() {
                       {new Date(apt.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    apt.status === "SCHEDULED" ? "bg-blue-100 text-blue-700" :
-                    apt.status === "COMPLETED" ? "bg-green-100 text-green-700" :
-                    apt.status === "CANCELLED" ? "bg-red-100 text-red-700" :
-                    "bg-zinc-100 text-zinc-700"
-                  }`}>
-                    {apt.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      apt.status === "SCHEDULED" ? "bg-blue-100 text-blue-700" :
+                      apt.status === "COMPLETED" ? "bg-green-100 text-green-700" :
+                      apt.status === "CANCELLED" ? "bg-red-100 text-red-700" :
+                      "bg-zinc-100 text-zinc-700"
+                    }`}>
+                      {apt.status}
+                    </span>
+                    {apt.status === "SCHEDULED" && (
+                      <CancelButton appointmentId={apt.id} />
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

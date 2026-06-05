@@ -1,6 +1,5 @@
 import Link from "next/link"
-import { auth } from "@/app/lib/auth"
-import { signOut } from "@/app/lib/auth"
+import { auth, signOut } from "@/app/lib/auth"
 
 export default async function Navbar() {
   const session = await auth()
@@ -23,6 +22,9 @@ export default async function Navbar() {
           </Link>
           {session ? (
             <div className="flex gap-4 items-center">
+              <Link href="/appointments" className="hover:text-zinc-300 transition text-sm">
+                My Appointments
+              </Link>
               <span className="text-zinc-400 text-sm">{session.user?.name}</span>
               <form action={async () => {
                 "use server"

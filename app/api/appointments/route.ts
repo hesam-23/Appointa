@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/app/lib/prisma"
 import { auth } from "@/app/lib/auth"
+import { sendBookingConfirmation } from "@/app/lib/email"
 
 export async function GET() {
   try {
@@ -68,6 +69,18 @@ export async function POST(request: Request) {
         service: true,
       },
     })
+
+    try {
+      await sendBookingConfirmation({
+        to: appointment.user.email,
+        customerName: appointment.user.name,
+        serviceName: appointment.service.name,
+        staffName: appointment.staff.name,
+        startTime: appointment.startTime,
+      })
+    } catch (emailError) {
+      console.error("Failed to send email:", emailError)
+    }
 
     return NextResponse.json(appointment, { status: 201 })
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/app/lib/prisma"
 import { auth } from "@/app/lib/auth"
+import { sendCancellationEmail } from "@/app/lib/email"
 
 export async function PATCH(
   request: Request,
@@ -18,6 +19,10 @@ export async function PATCH(
 
     const appointment = await prisma.appointment.findUnique({
       where: { id: params.id },
+      include: {
+        user: true,
+        service: true,
+      },
     })
 
     if (!appointment) {
@@ -32,6 +37,19 @@ export async function PATCH(
       where: { id: params.id },
       data: { status },
     })
+
+    if (status === "CANCELLED") {
+      try {
+        await sendCancellationEmail({
+          to: appointment.user.email,
+          customerName: appointment.user.name,
+          serviceName: appointment.service.name,
+          startTime: appointment.startTime,
+        })
+      } catch (emailError) {
+        console.error("Failed to send email:", emailError)
+      }
+    }
 
     return NextResponse.json(updated)
   } catch (error) {

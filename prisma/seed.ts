@@ -72,7 +72,21 @@ async function main() {
       },
     })
   }
+const testUserExists = await prisma.user.findUnique({
+    where: { email: "en_concrete@yahoo.com" },
+  })
 
+  if (!testUserExists) {
+    const hashedPassword = await bcrypt.hash("hesam12345678", 12)
+    await prisma.user.create({
+      data: {
+        name: "Hesam Test",
+        email: "en_concrete@yahoo.com",
+        password: hashedPassword,
+        role: "CUSTOMER",
+      },
+    })
+  }
   console.log("Seed data created successfully!")
 }
 

@@ -39,7 +39,7 @@ export default async function AdminPanel() {
             <p className="text-zinc-500">Scheduled</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Link href="/admin/services" className="bg-white border border-zinc-200 rounded-2xl p-6 hover:border-zinc-400 transition">
             <h2 className="text-xl font-semibold mb-2">Manage Services</h2>
             <p className="text-zinc-500">Add, edit or remove services</p>
@@ -51,6 +51,10 @@ export default async function AdminPanel() {
           <Link href="/admin/appointments" className="bg-white border border-zinc-200 rounded-2xl p-6 hover:border-zinc-400 transition">
             <h2 className="text-xl font-semibold mb-2">All Appointments</h2>
             <p className="text-zinc-500">View and manage all appointments</p>
+          </Link>
+          <Link href="/admin/logs" className="bg-white border border-zinc-200 rounded-2xl p-6 hover:border-zinc-400 transition">
+            <h2 className="text-xl font-semibold mb-2">Audit Logs</h2>
+            <p className="text-zinc-500">Track all system activities</p>
           </Link>
         </div>
       </div>

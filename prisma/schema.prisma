@@ -16,6 +16,7 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   appointments Appointment[]
+  auditLogs    AuditLog[]
 }
 
 model Staff {
@@ -57,6 +58,17 @@ model Appointment {
   user      User              @relation(fields: [userId], references: [id])
   staff     Staff             @relation(fields: [staffId], references: [id])
   service   Service           @relation(fields: [serviceId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 enum Role {

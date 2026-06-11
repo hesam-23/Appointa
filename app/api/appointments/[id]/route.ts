@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/app/lib/prisma"
 import { auth } from "@/app/lib/auth"
 import { sendCancellationEmail } from "@/app/lib/email"
+import { createAuditLog } from "@/app/lib/audit"
 
 export async function PATCH(
   request: Request,
@@ -36,6 +37,14 @@ export async function PATCH(
     const updated = await prisma.appointment.update({
       where: { id: params.id },
       data: { status },
+    })
+
+    await createAuditLog({
+      action: "CANCEL_APPOINTMENT",
+      entity: "Appointment",
+      entityId: appointment.id,
+      details: `Cancelled ${appointment.service.name}`,
+      userId: session.user.id,
     })
 
     if (status === "CANCELLED") {

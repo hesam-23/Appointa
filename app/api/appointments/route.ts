@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/app/lib/prisma"
 import { auth } from "@/app/lib/auth"
 import { sendBookingConfirmation } from "@/app/lib/email"
+import { createAuditLog } from "@/app/lib/audit"
 
 export async function GET() {
   try {
@@ -68,6 +69,14 @@ export async function POST(request: Request) {
         staff: true,
         service: true,
       },
+    })
+
+    await createAuditLog({
+      action: "BOOK_APPOINTMENT",
+      entity: "Appointment",
+      entityId: appointment.id,
+      details: `Booked ${appointment.service.name} with ${appointment.staff.name}`,
+      userId: session.user.id,
     })
 
     try {

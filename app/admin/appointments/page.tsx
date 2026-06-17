@@ -6,7 +6,7 @@ import Link from "next/link"
 export default async function AdminAppointments() {
   const session = await auth()
 
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session || session.user?.role !== "ADMIN") {
     redirect("/")
   }
 

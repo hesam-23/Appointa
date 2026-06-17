@@ -6,39 +6,33 @@ import { createAuditLog } from "@/app/lib/audit"
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await auth()
-
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
     const body = await request.json()
     const { status } = body
-
     const appointment = await prisma.appointment.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: true,
         service: true,
       },
     })
-
     if (!appointment) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
     }
-
     if (appointment.userId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
-
     const updated = await prisma.appointment.update({
-      where: { id: params.id },
+      where: { id },
       data: { status },
     })
-
     await createAuditLog({
       action: "CANCEL_APPOINTMENT",
       entity: "Appointment",
@@ -46,7 +40,6 @@ export async function PATCH(
       details: `Cancelled ${appointment.service.name}`,
       userId: session.user.id,
     })
-
     if (status === "CANCELLED") {
       try {
         await sendCancellationEmail({
@@ -59,7 +52,6 @@ export async function PATCH(
         console.error("Failed to send email:", emailError)
       }
     }
-
     return NextResponse.json(updated)
   } catch (error) {
     return NextResponse.json(

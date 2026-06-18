@@ -1,9 +1,7 @@
 import Link from "next/link"
 import { auth, signOut } from "@/app/lib/auth"
-
 export default async function Navbar() {
   const session = await auth()
-
   return (
     <nav className="bg-zinc-900 text-white px-6 py-4">
       <div className="max-w-4xl mx-auto flex justify-between items-center">
@@ -11,18 +9,20 @@ export default async function Navbar() {
           Appointa
         </Link>
         <div className="flex gap-6 items-center">
-          <Link href="/services" className="hover:text-zinc-300 transition">
-            Services
-          </Link>
-          <Link href="/staff" className="hover:text-zinc-300 transition">
-            Staff
-          </Link>
-          <Link href="/booking" className="hover:text-zinc-300 transition">
-            Book Now
-          </Link>
+          <div className="hidden md:flex gap-6 items-center">
+            <Link href="/services" className="hover:text-zinc-300 transition">
+              Services
+            </Link>
+            <Link href="/staff" className="hover:text-zinc-300 transition">
+              Staff
+            </Link>
+            <Link href="/booking" className="hover:text-zinc-300 transition">
+              Book Now
+            </Link>
+          </div>
           {session ? (
             <div className="flex gap-4 items-center">
-              <Link href="/appointments" className="hover:text-zinc-300 transition text-sm">
+              <Link href="/appointments" className="hover:text-zinc-300 transition text-sm hidden md:block">
                 My Appointments
               </Link>
               <span className="text-zinc-400 text-sm">{session.user?.name}</span>

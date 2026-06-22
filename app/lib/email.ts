@@ -1,7 +1,5 @@
 import { Resend } from "resend"
-
 const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function sendBookingConfirmation({
   to,
   customerName,
@@ -20,9 +18,8 @@ export async function sendBookingConfirmation({
     hour: "2-digit",
     minute: "2-digit",
   })
-
   await resend.emails.send({
-    from: "Appointa <onboarding@resend.dev>",
+    from: "Appointa <noreply@hegolz.com>",
     to,
     subject: "Appointment Confirmed",
     html: `
@@ -42,7 +39,6 @@ export async function sendBookingConfirmation({
     `,
   })
 }
-
 export async function sendCancellationEmail({
   to,
   customerName,
@@ -59,9 +55,8 @@ export async function sendCancellationEmail({
     hour: "2-digit",
     minute: "2-digit",
   })
-
   await resend.emails.send({
-    from: "Appointa <onboarding@resend.dev>",
+    from: "Appointa <noreply@hegolz.com>",
     to,
     subject: "Appointment Cancelled",
     html: `

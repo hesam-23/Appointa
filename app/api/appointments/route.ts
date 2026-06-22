@@ -3,7 +3,6 @@ import { prisma } from "@/app/lib/prisma"
 import { auth } from "@/app/lib/auth"
 import { sendBookingConfirmation } from "@/app/lib/email"
 import { createAuditLog } from "@/app/lib/audit"
-
 export async function GET() {
   try {
     const appointments = await prisma.appointment.findMany({
@@ -22,19 +21,15 @@ export async function GET() {
     )
   }
 }
-
 export async function POST(request: Request) {
   try {
     const session = await auth()
-
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
     const body = await request.json()
     const startTime = new Date(body.startTime)
     const endTime = new Date(body.endTime)
-
     const conflict = await prisma.appointment.findFirst({
       where: {
         staffId: body.staffId,
@@ -47,14 +42,12 @@ export async function POST(request: Request) {
         ],
       },
     })
-
     if (conflict) {
       return NextResponse.json(
         { error: "This staff member is not available at the selected time" },
         { status: 409 }
       )
     }
-
     const appointment = await prisma.appointment.create({
       data: {
         startTime,
@@ -70,7 +63,6 @@ export async function POST(request: Request) {
         service: true,
       },
     })
-
     await createAuditLog({
       action: "BOOK_APPOINTMENT",
       entity: "Appointment",
@@ -78,7 +70,7 @@ export async function POST(request: Request) {
       details: `Booked ${appointment.service.name} with ${appointment.staff.name}`,
       userId: session.user.id,
     })
-
+    let emailErrorMessage = null
     try {
       await sendBookingConfirmation({
         to: appointment.user.email,
@@ -87,11 +79,11 @@ export async function POST(request: Request) {
         staffName: appointment.staff.name,
         startTime: appointment.startTime,
       })
-    } catch (emailError) {
+    } catch (emailError: any) {
       console.error("Failed to send email:", emailError)
+      emailErrorMessage = emailError?.message || JSON.stringify(emailError)
     }
-
-    return NextResponse.json(appointment, { status: 201 })
+    return NextResponse.json({ ...appointment, emailError: emailErrorMessage }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to create appointment" },

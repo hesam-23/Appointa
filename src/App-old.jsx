@@ -45,7 +45,6 @@ function derivedBookingStatus(b, todayIso) {
 function derivedPaymentStatus(b, todayIso) {
   if (b.paymentStatus === "refunded") return "Refunded";
   if (b.paymentStatus === "paid-to-barber") return "Paid";
-  if (b.paymentStatus === "not_charged") return "Pay in person";
   if (b.status === "confirmed" && b.iso < todayIso) return "Paid";
   return "On Hold";
 }
@@ -113,8 +112,6 @@ const WEEKDAYS = [
   { id: 4, label: "Thu" }, { id: 5, label: "Fri" }, { id: 6, label: "Sat" },
 ];
 const BREAK_LABELS = ["Lunch", "Breakfast", "Dinner", "Personal", "Emergency", "Other"];
-const PENALTY_DEPOSIT = 500;
-const PENALTY_PER_CANCELLATION = 45;
 const DEFAULT_CALENDAR_SETTINGS = {
   workingHours: { start: 9, end: 17 },
   slotDurationMinutes: 60,
@@ -187,7 +184,6 @@ const INITIAL_BARBERS = [
     accountStatus: "active", photoHue: 28, pendingMove: null, createdAt: "2026-03-02T00:00:00.000Z",
     calendarSeed: 1,
     calendarSettings: { workingHours: { start: 9, end: 17 }, slotDurationMinutes: 60, bufferMinutes: 0, breaks: [{ id: "br1", label: "Lunch", start: 12, end: 13 }], weeklyDaysOff: [0], holidaysEnabled: { christmas: true, thanksgiving: true, independence: true } },
-    penaltyEnabled: false, securityDeposit: 0, penaltyHistory: [],
     subscription: { plan: "Monthly · $100/mo", status: "active", renewsOn: "Aug 3, 2026" },
   },
   {
@@ -197,7 +193,6 @@ const INITIAL_BARBERS = [
     accountStatus: "active", photoHue: 200, pendingMove: null, createdAt: "2026-01-18T00:00:00.000Z",
     calendarSeed: 2,
     calendarSettings: { workingHours: { start: 8, end: 18 }, slotDurationMinutes: 30, bufferMinutes: 10, breaks: [{ id: "br2", label: "Lunch", start: 13, end: 14 }], weeklyDaysOff: [0, 1], holidaysEnabled: { christmas: true, thanksgiving: true } },
-    penaltyEnabled: true, securityDeposit: 500, penaltyHistory: [],
     subscription: { plan: "Annual · $900/yr", status: "grace", renewsOn: "Jun 28, 2026" },
   },
   {
@@ -207,38 +202,7 @@ const INITIAL_BARBERS = [
     accountStatus: "active", photoHue: 350, pendingMove: null, createdAt: "2026-05-27T00:00:00.000Z",
     calendarSeed: 3,
     calendarSettings: { workingHours: { start: 10, end: 19 }, slotDurationMinutes: 45, bufferMinutes: 15, breaks: [], weeklyDaysOff: [1], holidaysEnabled: { christmas: true } },
-    penaltyEnabled: false, securityDeposit: 0, penaltyHistory: [],
     subscription: { plan: "6-Month · $400", status: "active", renewsOn: "Sep 12, 2026" },
-  },
-  {
-    id: "b4", name: "Jordan Blake", shop: "Blake Cuts", zip: "48104", city: "Ann Arbor", state: "MI",
-    address: "310 S State St, Ann Arbor, MI 48104", gender: "Male", referralSource: "TikTok",
-    phone: "(734) 555-0177", bio: "College-town regular. Fast, clean fades between classes.",
-    accountStatus: "active", photoHue: 145, pendingMove: null, createdAt: "2026-04-11T00:00:00.000Z",
-    calendarSeed: 4,
-    calendarSettings: { workingHours: { start: 9, end: 18 }, slotDurationMinutes: 30, bufferMinutes: 5, breaks: [{ id: "br4", label: "Lunch", start: 13, end: 13.5 }], weeklyDaysOff: [0], holidaysEnabled: { christmas: true, thanksgiving: true } },
-    penaltyEnabled: false, securityDeposit: 0, penaltyHistory: [],
-    subscription: { plan: "Monthly · $100/mo", status: "active", renewsOn: "Aug 15, 2026" },
-  },
-  {
-    id: "b5", name: "Maria Chen", shop: "Chen's Chair", zip: "49503", city: "Grand Rapids", state: "MI",
-    address: "77 Monroe Center St, Grand Rapids, MI 49503", gender: "Female", referralSource: "Facebook",
-    phone: "(616) 555-0143", bio: "Precision fades and color work. Ten years in, still obsessed with a clean edge-up.",
-    accountStatus: "active", photoHue: 260, pendingMove: null, createdAt: "2026-02-09T00:00:00.000Z",
-    calendarSeed: 5,
-    calendarSettings: { workingHours: { start: 9, end: 17 }, slotDurationMinutes: 45, bufferMinutes: 10, breaks: [{ id: "br5", label: "Lunch", start: 12.5, end: 13.5 }], weeklyDaysOff: [0, 6], holidaysEnabled: { christmas: true } },
-    penaltyEnabled: true, securityDeposit: 455, penaltyHistory: [{ reason: "Cancelled within 24h · J. Whitfield", amount: 45, at: "2026-06-30T00:00:00.000Z" }],
-    subscription: { plan: "Annual · $900/yr", status: "active", renewsOn: "Feb 9, 2027" },
-  },
-  {
-    id: "b6", name: "Andre Wallace", shop: "Wallace Barber Co.", zip: "48201", city: "Detroit", state: "MI",
-    address: "1420 Woodward Ave, Detroit, MI 48201", gender: "Male", referralSource: "Advertising",
-    phone: "(313) 555-0166", bio: "Old-school barbershop feel, hot towel finish on every cut.",
-    accountStatus: "active", photoHue: 15, pendingMove: null, createdAt: "2026-06-20T00:00:00.000Z",
-    calendarSeed: 6,
-    calendarSettings: { workingHours: { start: 10, end: 20 }, slotDurationMinutes: 60, bufferMinutes: 0, breaks: [{ id: "br6", label: "Dinner", start: 17, end: 17.5 }], weeklyDaysOff: [0], holidaysEnabled: {} },
-    penaltyEnabled: false, securityDeposit: 0, penaltyHistory: [],
-    subscription: { plan: "6-Month · $400", status: "active", renewsOn: "Dec 20, 2026" },
   },
 ];
 
@@ -256,19 +220,6 @@ const INITIAL_SERVICES = {
     { id: "s6", name: "Kids Cut (12 & under)", price: 22, duration: 20 },
     { id: "s7", name: "Fade + Design", price: 45, duration: 40 },
   ],
-  b4: [
-    { id: "s8", name: "Student Fade", price: 25, duration: 30 },
-    { id: "s9", name: "Beard Trim", price: 15, duration: 15 },
-  ],
-  b5: [
-    { id: "s10", name: "Precision Fade", price: 40, duration: 45 },
-    { id: "s11", name: "Color Touch-up", price: 55, duration: 45 },
-    { id: "s12", name: "Edge-up", price: 18, duration: 15 },
-  ],
-  b6: [
-    { id: "s13", name: "Classic Barbershop Cut", price: 32, duration: 60 },
-    { id: "s14", name: "Hot Towel Shave", price: 28, duration: 30 },
-  ],
 };
 
 const INITIAL_PHOTOS = {
@@ -281,19 +232,10 @@ const INITIAL_PHOTOS = {
   b3: [
     { id: "p6", label: "Tommy" }, { id: "p7", label: "Shop front" }, { id: "p8", label: "Kids corner" },
   ],
-  b4: [
-    { id: "p9", label: "Jordan" }, { id: "p10", label: "Shop front" },
-  ],
-  b5: [
-    { id: "p11", label: "Maria" }, { id: "p12", label: "My chair" }, { id: "p13", label: "Shop interior" },
-  ],
-  b6: [
-    { id: "p14", label: "Andre" }, { id: "p15", label: "Barbershop floor" },
-  ],
 };
 
 const MAX_PHOTOS = 6;
-const PAGE_SIZE = 3; // shows 3 of the 6 demo barbers up front — "Show more" reveals the rest
+const PAGE_SIZE = 3; // kept small on purpose so "Show more" is visible with only 3 demo barbers — production would use ~12–20
 const US_STATES = ["Michigan", "Ohio", "Indiana", "Illinois", "California", "New York", "Texas", "Florida"];
 const REFERRAL_SOURCES = ["Instagram", "Google Search", "Facebook", "TikTok", "Referred by a friend", "Advertising", "Other"];
 
@@ -320,7 +262,7 @@ function seedBookings(barbers, calendarByBarber) {
             hour: slot.hour,
             notes: "",
             status: "confirmed",
-            paymentStatus: b.penaltyEnabled ? "paid-to-barber" : "not_charged",
+            paymentStatus: "held",
             address: b.address,
             recentMove: false,
             createdAt: day.iso + "T09:00:00.000Z",
@@ -458,7 +400,7 @@ function Toast({ message, onClose }) {
 
 /* ============================ CUSTOMER APP ============================ */
 
-function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, calendarByBarber, setCalendarByBarber, bookings, setBookings, invites, setInvites, cancellationFlags, setCancellationFlags, rescheduleRequests, setRescheduleRequests, auditLog, notify, logAudit }) {
+function CustomerApp({ barbers, servicesByBarber, photosByBarber, calendarByBarber, setCalendarByBarber, bookings, setBookings, invites, setInvites, cancellationFlags, setCancellationFlags, rescheduleRequests, setRescheduleRequests, auditLog, notify, logAudit }) {
   const [screen, setScreen] = useState("search"); // search | profile | book | confirm | alternatives
   const [query, setQuery] = useState("");
   const [zip, setZip] = useState("");
@@ -491,15 +433,31 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
   const services = selectedBarberId ? servicesByBarber[selectedBarberId] : [];
   const calendar = selectedBarberId ? calendarByBarber[selectedBarberId] : [];
   const day = calendar[dayIdx];
+const results = useMemo(() => {
+  let list = barbers.filter(
+    (b) => b.accountStatus === "active" && b.subscription.status !== "inactive"
+  );
 
-  const results = useMemo(() => {
-    let list = barbers.filter((b) => b.accountStatus === "active" && b.subscription.status !== "inactive");
-    if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter((b) => b.name.toLowerCase().includes(q) || b.phone.includes(q) || b.shop.toLowerCase().includes(q));
-    }
-    return list;
-  }, [barbers, query]);
+  const stateMap = {
+    michigan: "mi",
+    mich: "mi",
+    mi: "mi",
+  };
+
+  if (query.trim()) {
+    const q = query.trim().toLowerCase();
+    const normalizedQ = stateMap[q] || q;
+
+    list = list.filter((b) =>
+      b.name.toLowerCase().includes(normalizedQ) ||
+      b.phone.includes(normalizedQ) ||
+      b.shop.toLowerCase().includes(normalizedQ) ||
+      b.state.toLowerCase().includes(normalizedQ)
+    );
+  }
+
+  return list;
+}, [barbers, query]);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [query]);
@@ -535,10 +493,6 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
   const paymentAmount = (selectedService ? selectedService.price : 0) + (addExtra && extraHour != null && extraService ? extraService.price : 0);
 
   function confirmBooking() {
-    if (!barber.penaltyEnabled) {
-      finalizeBooking();
-      return;
-    }
     setPayStep("processing");
     setTimeout(() => {
       setPayStep("paid");
@@ -557,7 +511,7 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
       id, barberId: barber.id, customerName: `${form.first} ${form.last}`.trim(),
       phone: form.phone, email: form.email, service: selectedService.name, price: selectedService.price,
       iso: day.iso, hour: selectedHour, notes: form.notes, status: initialStatus,
-      paymentStatus: barber.penaltyEnabled ? "paid-to-barber" : "not_charged", address: bookingAddress, recentMove,
+      paymentStatus: "held", address: bookingAddress, recentMove,
       referralSource: form.referralSource || null, createdAt: new Date().toISOString(),
       flagReason: needsReview ? `${customerFlagCount} changes/cancellations in the past year` : null,
     };
@@ -581,7 +535,7 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
           id: extraId, barberId: barber.id, customerName: `${form.first} ${form.last}`.trim() + " (guest)",
           phone: form.phone, email: form.email, service: extraService.name, price: extraService.price,
           iso: extraDay.iso, hour: extraHour, notes: extraNote, status: initialStatus,
-          paymentStatus: barber.penaltyEnabled ? "paid-to-barber" : "not_charged", address: bookingAddress, recentMove, createdAt: new Date().toISOString(),
+          paymentStatus: "held", address: bookingAddress, recentMove, createdAt: new Date().toISOString(),
           flagReason: newBooking.flagReason,
         });
       }
@@ -598,9 +552,7 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
 
   function cancelJustBooked() {
     const ids = lastBookings.map((b) => b.id);
-    const isLockedIn = lastBookings.some((lb) => lb.iso === calendar[0]?.iso);
-    const forfeits = isLockedIn && barber.penaltyEnabled;
-    setBookings((prev) => prev.map((b) => (ids.includes(b.id) ? { ...b, status: "cancelled", paymentStatus: forfeits ? "paid-to-barber" : (b.paymentStatus === "not_charged" ? "not_charged" : "refunded") } : b)));
+    setBookings((prev) => prev.map((b) => (ids.includes(b.id) ? { ...b, status: "cancelled", paymentStatus: "refunded" } : b)));
     setCalendarByBarber((prev) => {
       const copy = structuredClone(prev);
       lastBookings.forEach((lb) => {
@@ -618,8 +570,8 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
     const total = lastBookings.reduce((s, lb) => s + lb.price, 0);
     logAudit({
       type: "booking_cancelled_by_customer", actor: `${form.first} ${form.last}`.trim() || "Guest", phone: form.phone,
-      before: { status: "confirmed" },
-      after: { status: "cancelled", forfeited: forfeits, reason: cancelReason.trim() },
+      before: { status: "confirmed", paymentStatus: "held" },
+      after: { status: "cancelled", paymentStatus: "refunded", reason: cancelReason.trim() },
       meta: lastBookings.map((lb) => `${lb.iso} ${fmtTime(lb.hour)}`).join(", "),
     });
     setCancellationFlags((prev) => [...prev, {
@@ -630,13 +582,7 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
       barberId: barber.id,
       createdAt: new Date().toISOString(),
     }]);
-    if (forfeits) {
-      notify(`Booking${lastBookings.length > 1 ? "s" : ""} cancelled — since it was inside 24 hours, the $${total} stays with ${barber.name}.`);
-    } else if (barber.penaltyEnabled) {
-      notify(`Booking${lastBookings.length > 1 ? "s" : ""} cancelled — your $${total} has been refunded in full.`);
-    } else {
-      notify(`Booking${lastBookings.length > 1 ? "s" : ""} cancelled — no payment was collected, so there's nothing to refund.`);
-    }
+    notify(`Booking${lastBookings.length > 1 ? "s" : ""} cancelled — your $${total} has been refunded in full.`);
     setShowCancelForm(false);
     setCancelReason("");
     setScreen("search");
@@ -667,7 +613,6 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
     const req = rescheduleRequests.find((r) => r.id === reqId);
     if (!req) return;
     const bk = bookings.find((b) => b.id === req.bookingId);
-    const reqBarber = barbers.find((b) => b.id === req.barberId);
     setCalendarByBarber((prev) => {
       const copy = structuredClone(prev);
       const oldDay = copy[req.barberId].find((x) => x.iso === req.oldIso);
@@ -678,13 +623,6 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
     setBookings((prev) => prev.map((b) => (b.id === req.bookingId ? { ...b, status: "cancelled", paymentStatus: "refunded", pendingRescheduleId: null } : b)));
     setRescheduleRequests((prev) => prev.map((r) => (r.id === reqId ? { ...r, status: "declined" } : r)));
     logAudit({ type: "booking_reschedule_declined", actor: bk?.customerName || "Guest", phone: bk?.phone, before: { status: "confirmed" }, after: { status: "cancelled" } });
-    if (reqBarber?.penaltyEnabled) {
-      setBarbers((prev) => prev.map((b) => (b.id === req.barberId ? {
-        ...b, securityDeposit: Math.max(0, b.securityDeposit - PENALTY_PER_CANCELLATION),
-        penaltyHistory: [...b.penaltyHistory, { reason: `Reschedule declined · ${bk?.customerName || "Guest"}`, amount: PENALTY_PER_CANCELLATION, at: new Date().toISOString() }],
-      } : b)));
-      logAudit({ type: "cancellation_penalty_charged", actor: reqBarber.name, barberId: req.barberId, after: { amount: PENALTY_PER_CANCELLATION }, meta: "Reschedule declined by customer" });
-    }
     setDismissedRescheduleNotices((prev) => [...prev, reqId]);
     notify("Original time released and refunded — pick a new time whenever you're ready.");
   }
@@ -768,7 +706,11 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
           <h1 className="ap-h1">Find your barber.<br />Grab a chair.</h1>
           <div className="ap-search-row">
             <Search size={18} />
-            <input placeholder="Search by barber name or phone number" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input 
+  placeholder="Search by barber name, phone, service, or state" 
+  value={query} 
+  onChange={(e) => setQuery(e.target.value)} 
+/>
           </div>
         </div>
 
@@ -980,7 +922,6 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
             <h2 className="ap-h2">{barber.name}</h2>
             <p className="ap-muted">{barber.shop} · {barber.city}, {barber.state}</p>
             <p className="ap-muted-sm ap-mono"><MapPin size={12} /> {currentAddressOf(barber)}</p>
-            {barber.penaltyEnabled && <Pill tone="brass">Charges a late-cancellation fee</Pill>}
             <p style={{ maxWidth: 480 }}>{barber.bio}</p>
           </div>
         </div>
@@ -1156,33 +1097,17 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
                 )}
               </div>
               <div className="ap-summary-right">
-                {barber.penaltyEnabled ? (
-                  <>
-                    <p className="ap-mono ap-price">${paymentAmount} total</p>
-                    <p className="ap-muted-sm">Charged now, paid straight to {barber.name}.</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="ap-mono ap-price">${paymentAmount}</p>
-                    <p className="ap-muted-sm">Pay {barber.name} in person — nothing is charged now.</p>
-                  </>
-                )}
+                <p className="ap-mono ap-price">${paymentAmount} total</p>
+                <p className="ap-muted-sm">Charged now, held until your appointment.</p>
               </div>
             </Ticket>
 
             <div className="ap-policy-box">
               <p className="ap-policy-box-title">Booking terms</p>
-              {barber.penaltyEnabled ? (
-                <ol>
-                  <li>You can change or cancel this booking free of charge up to 24 hours before the appointment time.</li>
-                  <li>Inside 24 hours, a cancellation or change request needs {barber.name}'s approval — if they don't approve it, the amount paid is non-refundable.</li>
-                </ol>
-              ) : (
-                <ol>
-                  <li>No payment is collected now — you pay {barber.name} directly at the appointment.</li>
-                  <li>You can change or cancel this booking up to 24 hours before the appointment time.</li>
-                </ol>
-              )}
+              <ol>
+                <li>You can change or cancel this booking up to 24 hours before the appointment time.</li>
+                <li>After that deadline, the amount paid is non-refundable.</li>
+              </ol>
               <label className="ap-checkbox">
                 <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
                 I've read and agree to these terms
@@ -1198,9 +1123,9 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
                 disabled={!form.first || !form.phone || !agreedToTerms || payStep === "processing" || (addExtra && (extraDayIdx == null || extraHour == null || !extraService))}
                 onClick={confirmBooking}
               >
-                {barber.penaltyEnabled ? (
-                  payStep === "processing" ? `Processing $${paymentAmount}…` : <><CreditCard size={16} /> Pay ${paymentAmount} & confirm</>
-                ) : "Confirm booking — pay in person"}
+                {payStep === "processing" ? `Processing $${paymentAmount}…` : (
+                  <><CreditCard size={16} /> Pay ${paymentAmount} & confirm</>
+                )}
               </button>
             </div>
           </>
@@ -1214,7 +1139,6 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
     const totalPaid = lastBookings.reduce((s, lb) => s + lb.price, 0);
     const isLockedIn = lastBookings.some((lb) => lb.iso === calendar[0]?.iso);
     const isPending = lastBooking.status === "pending";
-    const forfeitsOnCancel = isLockedIn && barber.penaltyEnabled;
     return (
       <div className="ap-stack ap-narrow">
         <div className="ap-confirm-icon" style={isPending ? { background: "var(--brass-soft)", color: "var(--brass)" } : undefined}>
@@ -1232,11 +1156,7 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
             <p key={lb.id}>{lb.service} — <span className="ap-mono">{lb.iso} {fmtTime(lb.hour)}</span></p>
           ))}
           <p className="ap-muted-sm ap-mono"><MapPin size={12} /> {lastBookings[0]?.address}</p>
-          {barber.penaltyEnabled ? (
-            <Pill tone={isPending ? "brass" : "sage"}>${totalPaid} paid — straight to {barber.name}</Pill>
-          ) : (
-            <Pill tone="slate">${totalPaid} due at the appointment — pay {barber.name} in person</Pill>
-          )}
+          <Pill tone={isPending ? "brass" : "sage"}>${totalPaid} paid — held until your appointment</Pill>
         </Ticket>
 
         {lastBookings.some((lb) => lb.recentMove) && (
@@ -1246,26 +1166,20 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
           </div>
         )}
 
-        {!isPending && (
-          isLockedIn ? (
-            <div className="ap-notice">
-              <AlertTriangle size={16} />
-              <p>
-                {barber.penaltyEnabled
-                  ? `This appointment is within 24 hours. You can still cancel, but the $${totalPaid} already paid stays with ${barber.name} — it won't be refunded.`
-                  : "This appointment is within 24 hours. No payment was collected, so cancelling has no cost — but please give the barber a heads-up."}
-              </p>
-            </div>
-          ) : (
-            <ul className="ap-policy">
-              <li>Change or cancel free of charge up to 24 hours before the appointment.</li>
-              <li>{barber.penaltyEnabled ? "Inside 24 hours, cancelling forfeits the amount paid to the barber." : "This barber doesn't charge at booking, so there's no cancellation penalty either way."}</li>
-              <li>A confirmation email is on its way to {form.email || "your inbox"}.</li>
-            </ul>
-          )
-        )}
+        {isLockedIn ? (
+          <div className="ap-notice">
+            <AlertTriangle size={16} />
+            <p>This appointment is within 24 hours, so it can no longer be changed or cancelled. Please show up as booked — if you don't, the amount paid goes to the barber.</p>
+          </div>
+        ) : !isPending ? (
+          <ul className="ap-policy">
+            <li>Change or cancel up to 24 hours before — after that, the amount paid isn't refundable.</li>
+            <li>You can reschedule <em>or</em> cancel once, not both, and only before that 24h mark.</li>
+            <li>A confirmation email is on its way to {form.email || "your inbox"}.</li>
+          </ul>
+        ) : null}
 
-        {!isPending && showCancelForm && (
+        {!isLockedIn && !isPending && showCancelForm && (
           <div className="ap-policy-box">
             <p className="ap-policy-box-title">Reason for cancelling</p>
             <textarea
@@ -1274,19 +1188,15 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
               rows={2}
               placeholder="Let the barber know why — this helps us keep the platform fair for everyone"
             />
-            <p className="ap-muted-sm">
-              {forfeitsOnCancel
-                ? `This cancellation won't be refunded — the $${totalPaid} stays with ${barber.name}. It's still logged against your account.`
-                : "Cancellations are logged against your account to help us watch for repeated last-minute changes."}
-            </p>
+            <p className="ap-muted-sm">Cancellations are logged against your account to help us watch for repeated last-minute changes.</p>
           </div>
         )}
 
         <div className="ap-actions">
-          {!isPending && !showCancelForm && (
+          {!isLockedIn && !isPending && !showCancelForm && (
             <button className="ap-btn ap-btn-outline" onClick={() => setShowCancelForm(true)}><Ban size={14} /> Cancel {lastBookings.length > 1 ? "these bookings" : "this booking"}</button>
           )}
-          {!isPending && showCancelForm && (
+          {!isLockedIn && !isPending && showCancelForm && (
             <>
               <button className="ap-btn ap-btn-ghost" onClick={() => { setShowCancelForm(false); setCancelReason(""); }}>Never mind</button>
               <button className="ap-btn ap-btn-outline" disabled={!cancelReason.trim()} onClick={cancelJustBooked}>Confirm cancellation</button>
@@ -1325,19 +1235,6 @@ function BarberApp({ barbers, setBarbers, servicesByBarber, setServicesByBarber,
   const [draftSettings, setDraftSettings] = useState(barber.calendarSettings || DEFAULT_CALENDAR_SETTINGS);
   const [newBreak, setNewBreak] = useState({ label: "Lunch", start: 12, end: 13 });
   const [calMonthOffset, setCalMonthOffset] = useState(0);
-  const [penaltyAgreed, setPenaltyAgreed] = useState(false);
-  const [penaltyPayStep, setPenaltyPayStep] = useState("idle");
-
-  function activatePenaltyProgram() {
-    setPenaltyPayStep("processing");
-    setTimeout(() => {
-      setBarbers((prev) => prev.map((b) => (b.id === activeId ? { ...b, penaltyEnabled: true, securityDeposit: PENALTY_DEPOSIT, penaltyHistory: [] } : b)));
-      logAudit({ type: "cancellation_penalty_activated", actor: barber.name, barberId: activeId, after: { deposit: PENALTY_DEPOSIT } });
-      notify(`Cancellation penalty program activated — $${PENALTY_DEPOSIT} deposit paid.`);
-      setPenaltyPayStep("idle");
-      setPenaltyAgreed(false);
-    }, 900);
-  }
 
   useEffect(() => { setDraftSettings(barber.calendarSettings || DEFAULT_CALENDAR_SETTINGS); }, [activeId]);
 
@@ -1529,10 +1426,9 @@ function BarberApp({ barbers, setBarbers, servicesByBarber, setServicesByBarber,
   }
   function markNoShow(bookingId) {
     const b = bookings.find((x) => x.id === bookingId);
-    const chargesUpfront = barber.penaltyEnabled;
-    setBookings((prev) => prev.map((x) => (x.id === bookingId ? { ...x, status: "no-show", paymentStatus: chargesUpfront ? "paid-to-barber" : "not_charged" } : x)));
-    logAudit({ type: "booking_no_show", actor: barber.name, barberId: activeId, before: { status: b.status, paymentStatus: b.paymentStatus }, after: { status: "no-show", paymentStatus: chargesUpfront ? "paid-to-barber" : "not_charged" }, meta: `${b.customerName} · ${b.iso} ${fmtTime(b.hour)}` });
-    notify(chargesUpfront ? `Marked as no-show — the $${b.price} paid for this booking is now yours.` : "Marked as no-show.");
+    setBookings((prev) => prev.map((x) => (x.id === bookingId ? { ...x, status: "no-show", paymentStatus: "paid-to-barber" } : x)));
+    logAudit({ type: "booking_no_show", actor: barber.name, before: { status: b.status, paymentStatus: b.paymentStatus }, after: { status: "no-show", paymentStatus: "paid-to-barber" }, meta: `${b.customerName} · ${b.iso} ${fmtTime(b.hour)}` });
+    notify(`Marked as no-show — the $${b.price} paid for this booking is now yours.`);
   }
   function markCancel(bookingId) {
     const bk = bookings.find((x) => x.id === bookingId);
@@ -1546,18 +1442,7 @@ function BarberApp({ barbers, setBarbers, servicesByBarber, setServicesByBarber,
       return copy;
     });
     logAudit({ type: "booking_cancelled_by_barber", actor: barber.name, barberId: activeId, before: { status: bk.status, paymentStatus: bk.paymentStatus }, after: { status: "cancelled-by-barber", paymentStatus: "refunded" }, meta: `${bk.customerName} · ${bk.iso} ${fmtTime(bk.hour)}` });
-    const isInside24h = bk.iso === calendar[0]?.iso;
-    if (barber.penaltyEnabled && isInside24h) {
-      const amount = Math.min(PENALTY_PER_CANCELLATION, barber.securityDeposit);
-      setBarbers((prev) => prev.map((b) => (b.id === activeId ? {
-        ...b, securityDeposit: Math.max(0, b.securityDeposit - PENALTY_PER_CANCELLATION),
-        penaltyHistory: [...b.penaltyHistory, { reason: `Cancelled within 24h · ${bk.customerName}`, amount, at: new Date().toISOString() }],
-      } : b)));
-      logAudit({ type: "cancellation_penalty_charged", actor: barber.name, barberId: activeId, after: { amount }, meta: `${bk.customerName} · ${bk.iso} ${fmtTime(bk.hour)}` });
-      notify(`Booking cancelled — customer refunded $${bk.price}. Since this was inside 24h, $${PENALTY_PER_CANCELLATION} was deducted from your deposit.`);
-    } else {
-      notify(`Booking cancelled — the customer's $${bk.price} is refunded automatically, and they've been shown nearby barbers with a similar opening.`);
-    }
+    notify(`Booking cancelled — the customer's $${bk.price} is refunded automatically, and they've been shown nearby barbers with a similar opening.`);
   }
 
   const revenue = useMemo(() => {
@@ -2077,52 +1962,6 @@ function BarberApp({ barbers, setBarbers, servicesByBarber, setServicesByBarber,
             </div>
           </Ticket>
 
-          <h4 className="ap-section-label">Customer cancellation cash penalty</h4>
-          {!barber.penaltyEnabled ? (
-            <div className="ap-calrules-box">
-              <p className="ap-muted-sm">
-                Turn this on to have customers pay the full price at booking (straight to you) instead of paying in person later. Because it raises the stakes for them, it raises the stakes for you too — read carefully before activating.
-              </p>
-              <div className="ap-policy-box">
-                <p className="ap-policy-box-title">Terms of activation</p>
-                <p style={{ fontSize: 13 }}>
-                  With this on, customers pay the full service price at booking, sent straight to you. Before 24 hours out, either side can cancel or change with no penalty at all. Inside 24 hours: if the customer cancels or doesn't show, the amount they paid is yours to keep. If you cancel a confirmed booking inside that window — or a reschedule you request gets declined and the booking ends up cancelled — <strong>${PENALTY_PER_CANCELLATION} per cancelled booking</strong> is deducted from a required <strong>${PENALTY_DEPOSIT} security deposit</strong>, held and managed by JULOCT. Activating this feature requires paying that ${PENALTY_DEPOSIT} deposit up front. Every cancellation, change, and no-show is recorded either way, whether this is on or off. Paying the deposit and activating this feature means you fully accept these terms.
-                </p>
-                <label className="ap-checkbox">
-                  <input type="checkbox" checked={penaltyAgreed} onChange={(e) => setPenaltyAgreed(e.target.checked)} />
-                  I agree to the terms above
-                </label>
-              </div>
-              <div className="ap-actions" style={{ justifyContent: "flex-end" }}>
-                <button
-                  className="ap-btn ap-btn-primary"
-                  disabled={!penaltyAgreed || penaltyPayStep === "processing"}
-                  onClick={activatePenaltyProgram}
-                >
-                  {penaltyPayStep === "processing" ? "Processing payment…" : <><CreditCard size={16} /> Pay ${PENALTY_DEPOSIT} deposit & activate</>}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <Ticket className="ap-settings-row">
-                <div>
-                  <p>Active — customers see a cancellation-penalty notice at booking</p>
-                  <p className="ap-muted-sm">Security deposit balance</p>
-                </div>
-                <Pill tone={barber.securityDeposit > 100 ? "sage" : "crimson"}>${barber.securityDeposit} remaining</Pill>
-              </Ticket>
-              {barber.penaltyHistory.length > 0 && (
-                <div className="ap-admin-table">
-                  <div className="ap-admin-row ap-geo-head-row"><span>Reason</span><span>Amount</span><span>Date</span></div>
-                  {barber.penaltyHistory.map((h, i) => (
-                    <div className="ap-admin-row ap-geo-row" key={i}><span>{h.reason}</span><span className="ap-mono">-${h.amount}</span><span className="ap-mono ap-muted-sm">{new Date(h.at).toLocaleDateString()}</span></div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
           <h4 className="ap-section-label">Location</h4>
           <Ticket className="ap-settings-row">
             <div>
@@ -2247,7 +2086,6 @@ function BarberAuthApp({
         createdAt: new Date().toISOString(),
         calendarSeed: Math.floor(Math.random() * 1000) + 4,
         calendarSettings: { ...DEFAULT_CALENDAR_SETTINGS, breaks: [{ id: "br-" + Date.now(), label: "Lunch", start: 12, end: 13 }] },
-        penaltyEnabled: false, securityDeposit: 0, penaltyHistory: [],
         subscription: { plan: `${plan.label} · $${plan.price}${plan.cadence === "one-time" ? "" : plan.cadence}`, status: "active", renewsOn: addMonths(new Date(), plan.months).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
       };
       setBarbers((prev) => [...prev, newBarber]);
@@ -2286,7 +2124,7 @@ function BarberAuthApp({
           <button className="ap-btn ap-btn-outline" onClick={() => notify("Google sign-in is simulated in this demo.")}>Continue with Google</button>
           <div className="ap-demo-hint">
             <p className="ap-muted-sm">Demo accounts (password: <code>demo1234</code>):</p>
-            <p className="ap-mono ap-muted-sm">marcus@example.com · dana@example.com · tommy@example.com · jordan@example.com · maria@example.com · andre@example.com</p>
+            <p className="ap-mono ap-muted-sm">marcus@example.com · dana@example.com · tommy@example.com</p>
           </div>
         </div>
       )}
@@ -2909,9 +2747,6 @@ export default function App() {
     { email: "marcus@example.com", password: "demo1234", barberId: "b1" },
     { email: "dana@example.com", password: "demo1234", barberId: "b2" },
     { email: "tommy@example.com", password: "demo1234", barberId: "b3" },
-    { email: "jordan@example.com", password: "demo1234", barberId: "b4" },
-    { email: "maria@example.com", password: "demo1234", barberId: "b5" },
-    { email: "andre@example.com", password: "demo1234", barberId: "b6" },
   ]);
   const [loggedInBarberId, setLoggedInBarberId] = useState(null);
   const [role, setRole] = useState("customer");
@@ -2934,6 +2769,7 @@ export default function App() {
 
   const STAFF_ROLES = [
     { id: "barber", label: "Barber login", icon: Scissors },
+    { id: "admin", label: "Admin", icon: Shield },
   ];
 
   return (
@@ -2958,8 +2794,22 @@ export default function App() {
         .ap-app input, .ap-app select, .ap-app textarea { font-family:inherit; }
 
         .ap-topbar { background:var(--ink); color:var(--paper); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-        .ap-brand { display:flex; align-items:center; gap:8px; font-family:'Fraunces',serif; font-size:19px; font-weight:600; }
+        .ap-brand {
+  display:flex;
+  align-items:center;
+  gap:20px;
+  font-family:'Inter', sans-serif;
+  font-size:19px;
+  font-weight:700;
+  letter-spacing:-0.3px;
+}
         .ap-brand .mark { width:28px; height:28px; border-radius:50%; background:var(--brass); display:flex; align-items:center; justify-content:center; color:var(--ink); }
+.ap-brand sup {
+  font-size:15px;
+  margin-left:-15px;
+  position:relative;
+  top:-5px;
+}
         .ap-staff-links { display:flex; gap:16px; }
         .ap-staff-link { background:none; border:none; color:rgba(247,244,238,0.6); font-size:12px; display:flex; align-items:center; gap:5px; padding:4px 2px; border-bottom:1px solid transparent; }
         .ap-staff-link:hover { color:var(--paper); border-bottom-color:var(--brass); }
@@ -3178,7 +3028,6 @@ export default function App() {
         .ap-booking-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
         .ap-row-actions { display:flex; gap:6px; }
         .ap-reschedule-pending { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
-        .ap-pending-review { display:flex; flex-direction:column; align-items:flex-end; gap:6px; max-width:220px; text-align:right; }
 
         .ap-service-table { display:flex; flex-direction:column; gap:6px; }
         .ap-service-row { display:grid; grid-template-columns:2fr 1fr 1fr 32px; gap:8px; align-items:center; }
@@ -3240,7 +3089,7 @@ export default function App() {
       `}</style>
 
       <div className="ap-topbar">
-        <div className="ap-brand"><span className="mark"><Scissors size={14} /></span> JULOCT</div>
+        <div className="ap-brand"><span className="mark"><Scissors size={14} /></span> Appointa<sup>™</sup></div>
 
         {role === "customer" ? (
           <div className="ap-staff-links">
@@ -3279,7 +3128,7 @@ export default function App() {
         <div className="ap-container">
         {role === "customer" && (
           <CustomerApp
-            barbers={barbers} setBarbers={setBarbers} servicesByBarber={servicesByBarber} photosByBarber={photosByBarber}
+            barbers={barbers} servicesByBarber={servicesByBarber} photosByBarber={photosByBarber}
             calendarByBarber={calendarByBarber} setCalendarByBarber={setCalendarByBarber}
             bookings={bookings} setBookings={setBookings}
             invites={invites} setInvites={setInvites}
@@ -3309,6 +3158,15 @@ export default function App() {
               onLoggedIn={setLoggedInBarberId} notify={notify} logAudit={logAudit}
             />
           )
+        )}
+        {role === "admin" && <AdminApp barbers={barbers} setBarbers={setBarbers} bookings={bookings} invites={invites} cancellationFlags={cancellationFlags} auditLog={auditLog} logAudit={logAudit} servicesByBarber={servicesByBarber} rescheduleRequests={rescheduleRequests} />}
+        {role !== "customer" && (
+          <div className="ap-demo-switcher">
+            <span>Demo shortcut — jump to:</span>
+            {["barber", "admin"].filter((r) => r !== role).map((r) => (
+              <button key={r} className="ap-staff-link" onClick={() => setRole(r)}>{r === "barber" ? "Barber dashboard" : "Admin panel"}</button>
+            ))}
+          </div>
         )}
         </div>
       </div>

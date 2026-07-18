@@ -768,7 +768,7 @@ function CustomerApp({ barbers, setBarbers, servicesByBarber, photosByBarber, ca
           <h1 className="ap-h1">Find your barber.<br />Grab a chair.</h1>
           <div className="ap-search-row">
             <Search size={18} />
-            <input placeholder="Search by barber name or phone number" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input placeholder="Search by barber name, state, or service" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
         </div>
 
@@ -3240,7 +3240,7 @@ export default function App() {
       `}</style>
 
       <div className="ap-topbar">
-        <div className="ap-brand"><span className="mark"><Scissors size={14} /></span> JULOCT</div>
+        <div className="ap-brand"><span className="mark"><Scissors size={14} /></span> Appointa</div>
 
         {role === "customer" ? (
           <div className="ap-staff-links">
